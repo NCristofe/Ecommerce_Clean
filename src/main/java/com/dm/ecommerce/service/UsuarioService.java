@@ -1,12 +1,12 @@
 package com.dm.ecommerce.service;
 
 import com.dm.ecommerce.DTOs.LoginRequestDTO;
-import com.dm.ecommerce.DTOs.PedidoResponseDTO;
-import com.dm.ecommerce.DTOs.UsuarioRequestDTO;
 import com.dm.ecommerce.DTOs.UsuarioResponseDTO;
+import com.dm.ecommerce.DTOs.UsuarioRequestDTO;
 import com.dm.ecommerce.entity.Usuario;
 import com.dm.ecommerce.repositories.PedidoRepository;
 import com.dm.ecommerce.repositories.UsuarioRepository;
+import com.dm.ecommerce.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,17 +22,20 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final UsuarioRepository usuarioRepository;
     private final PedidoRepository pedidoRepository;
+    private final JwtService jwtService;
 
-    public UsuarioService(PasswordEncoder passwordEncoder, UsuarioRepository usuarioRepository, PedidoRepository pedidoRepository) {
+    public UsuarioService(PasswordEncoder passwordEncoder, UsuarioRepository usuarioRepository,
+                          PedidoRepository pedidoRepository, JwtService jwtService) {
         this.passwordEncoder = passwordEncoder;
         this.usuarioRepository = usuarioRepository;
         this.pedidoRepository = pedidoRepository;
+        this.jwtService = jwtService;
     }
 
     public String saveUsuario(UsuarioRequestDTO usuarioRequestDTO) {
         String senhaCriptografada = passwordEncoder.encode(usuarioRequestDTO.getSenha());
-
-        Usuario usuario = new Usuario(usuarioRequestDTO.getNome(), usuarioRequestDTO.getEmail(), usuarioRequestDTO.getTelefone(), senhaCriptografada, usuarioRequestDTO.getRoles());
+        Usuario usuario = new Usuario(usuarioRequestDTO.getNome(), usuarioRequestDTO.getEmail(),
+                usuarioRequestDTO.getTelefone(), senhaCriptografada, usuarioRequestDTO.getRoles());
         usuarioRepository.save(usuario);
         return "Usuário criado com sucesso.";
     }
@@ -41,21 +44,20 @@ public class UsuarioService {
         Usuario findUsuario = usuarioRepository.findByEmail(loginRequestDTO.getEmail());
 
         if (findUsuario == null) {
-            return "Usuário não encontrado.";
-        } else {
-            if (findUsuario.getSenha().equals(loginRequestDTO.getSenha())) {
-                return "Logado com sucesso.";
-            } else {
-                return "Senha incorreta.";
-            }
+            return "{\"error\": \"Usuário não encontrado.\", \"status\": 401}";
         }
+
+        if (!passwordEncoder.matches(loginRequestDTO.getSenha(), findUsuario.getSenha())) {
+            return "{\"error\": \"Senha incorreta.\", \"status\": 401}";
+        }
+
+        String token = jwtService.generateToken(findUsuario.getEmail());
+        return "{\"message\": \"Logado com sucesso.\", \"token\": \"" + token + "\", \"status\": 200}";
     }
 
     public List<UsuarioResponseDTO> mostrar() {
         List<Usuario> usuarios = usuarioRepository.findAll();
-        List<UsuarioResponseDTO> listaDeUsuarios = usuarios.stream().map(UsuarioResponseDTO::new).toList();
-
-        return listaDeUsuarios;
+        return usuarios.stream().map(UsuarioResponseDTO::new).toList();
     }
 
     public String deleteUsuario(UUID id) {
