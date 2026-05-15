@@ -21,7 +21,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @Entity
 public class Usuario {
-    //fazer o map que a manu explicou
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -32,7 +31,6 @@ public class Usuario {
     private String senha;
     @Enumerated(EnumType.STRING)
     private Role roles;
-
 
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
     @JsonManagedReference
