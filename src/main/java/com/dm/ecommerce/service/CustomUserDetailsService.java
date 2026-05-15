@@ -17,10 +17,20 @@ public class CustomUserDetailsService implements UserDetailsService {
         this.usuarioRepository = usuarioRepository;
     }
 
-
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         Usuario usuario = usuarioRepository.findByEmail(email);
-        return User.builder().username(usuario.getEmail()).password(usuario.getSenha()).roles(usuario.getRoles().name().replace("ROLE_", "")).build();
+
+        if (usuario == null) {
+            throw new UsernameNotFoundException("Usuário não encontrado com email: " + email);
+        }
+
+        String role = usuario.getRoles() != null ? usuario.getRoles().name() : "USER";
+
+        return User.builder()
+                .username(usuario.getEmail())
+                .password(usuario.getSenha())
+                .roles(role)
+                .build();
     }
 }
